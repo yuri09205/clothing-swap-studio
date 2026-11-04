@@ -2,6 +2,12 @@
 
 제품 이미지를 참고해 배경 이미지 속 의상을 교체하는 로컬 데스크톱 앱입니다. 개발 원본은 항상 이 폴더에서 수정합니다.
 
+## 다운로드
+
+[Windows 설치 파일 다운로드](https://github.com/yuri09205/clothing-swap-studio/releases/latest) · [모든 버전 보기](https://github.com/yuri09205/clothing-swap-studio/releases)
+
+다운로드 페이지의 `Assets`에서 `Clothing-Swap-Studio-Setup-<버전>.exe`를 선택해 설치합니다.
+
 ## 개발 실행
 
 ```powershell
