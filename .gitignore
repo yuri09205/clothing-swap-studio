@@ -1,0 +1,21 @@
+# Dependencies and generated build artifacts
+node_modules/
+out/
+
+# Secrets and local environment files
+.env
+.env.*
+*.env
+*.key
+*.pem
+
+# Generated output and local caches
+02_OUTPUT/
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor and operating-system state
+.vscode/
+.idea/
+desktop.ini

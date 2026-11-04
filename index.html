@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clothing Swap Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-mark">CS</span><div><h1>Clothing Swap Studio</h1><p>제품 이미지만으로 완성하는 정밀 의상 교체</p></div></div>
+    <div class="header-actions"><span class="privacy">이미지는 OpenAI 이미지 API로 전송됩니다</span><button id="api-ready" class="api-ready" type="button">● OPENAI KEY 확인 중</button></div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div><span class="eyebrow">IMAGE WORKFLOW</span><h2>옷걸이는 그대로.<br>의상만 새롭게.</h2></div>
+      <p>배경을 선택하고 새 제품 이미지를 첨부하세요.<br>걸린 의상을 자동으로 인식해 간격과 각도를 유지한 결과를 생성합니다.</p>
+    </section>
+
+    <section class="workflow" aria-label="의상 교체 노드 워크플로">
+      <svg class="connections" aria-hidden="true"><path id="line-bg-result"/><path id="line-product-result"/><path id="line-result-refine"/><path id="line-refine-final"/><path id="line-result-history"/><path id="line-final-history"/></svg>
+
+      <article class="node upload-node" id="background-node">
+        <div class="node-head"><span class="step">01</span><div><h3>배경 이미지</h3><p>교체할 의상이 걸린 원본</p></div><span id="background-status" class="status">필수</span></div>
+        <div id="background-library" class="background-library"><span>기본 배경을 불러오는 중…</span></div>
+        <div class="choice-divider"><span>또는</span></div>
+        <label class="upload-button" for="background-input"><input id="background-input" type="file" accept="image/*"><span>＋ 새 이미지 첨부</span><small>JPG, PNG · 최대 15MB</small></label>
+        <div id="custom-background" class="custom-background" hidden><img alt="직접 첨부한 배경"><b>직접 첨부</b></div>
+        <button class="replace" data-for="background-input" hidden>다른 이미지 선택</button><i class="port out"></i>
+        <div class="anchor-control"><button id="edit-anchors" type="button" disabled>옷걸이 위치 설정</button><span id="anchor-count">배경을 먼저 선택하세요</span></div>
+      </article>
+
+      <article class="node upload-node" id="product-node">
+        <div class="node-head"><span class="step">02</span><div><h3>새 의상 이미지</h3><p>디자인·색상·소재·실제 길이 참고</p></div><span id="product-status" class="status">1–6개 첨부</span></div>
+        <label class="dropzone" for="product-input"><input id="product-input" type="file" accept="image/*" multiple><div id="product-preview" class="product-preview"></div><span class="upload-copy"><b>제품 이미지 첨부</b><small>1–6개 첨부 · 정면 제품도 원본 각도로 변환</small></span></label>
+        <button class="replace" data-for="product-input" hidden>제품 다시 선택</button><i class="port out"></i>
+      </article>
+
+      <article class="node result-node" id="result-node">
+        <i class="port in top"></i><i class="port in bottom"></i><i class="port out"></i><div class="node-head"><span class="step">03</span><div><h3>의상 교체 결과</h3><p>원본 크기·비율·색감을 유지한 결과</p></div><span class="status">OUTPUT</span></div>
+        <div class="result-stage"><img id="result-image" alt="의상 교체 결과"><button id="full-view" class="full-view" type="button" hidden>FULL ↗</button><div id="result-empty"><span>✦</span><b>준비가 완료되면<br>결과가 여기에 표시됩니다</b></div><div id="loading" hidden><span></span><b>의상을 교체하고 있습니다…</b><small>옷걸이와 구도를 분석하는 중</small></div></div>
+        <div id="ready-status" class="ready-status" hidden>배경 이미지와 새 의상을 선택하세요</div>
+        <button id="generate" class="generate" disabled>의상 교체하기 <span>→</span></button>
+        <div class="result-actions" hidden><button id="download">1920×1080 OUTPUT 저장</button><button id="retry">다시 생성</button></div>
+      </article>
+
+      <article class="node refine-node" id="refine-node">
+        <div class="node-head"><span class="step">04</span><div><h3>수정 프롬프트 + 레퍼런스</h3><p>03 결과에서 원하는 부분을 추가 수정</p></div><span id="refine-status" class="status">선택</span></div>
+        <label class="refine-prompt"><span>수정 프롬프트</span><textarea id="refine-prompt" maxlength="4000" placeholder="예: 오른쪽 바지 색상만 짙은 네이비로 바꾸고 나머지는 그대로 유지해줘"></textarea></label>
+        <label class="reference-dropzone" for="reference-input"><input id="reference-input" type="file" accept="image/*" multiple><div id="reference-preview" class="reference-preview"></div><span id="reference-copy"><b>＋ 레퍼런스 이미지 첨부</b><small>선택 사항 · 최대 6장</small></span></label>
+        <button id="clear-references" class="replace" type="button" hidden>레퍼런스 다시 선택</button>
+        <button id="refine-generate" class="generate" type="button" disabled>최종 수정 이미지 생성 <span>→</span></button>
+        <i class="port in"></i><i class="port out"></i>
+      </article>
+
+      <article class="node final-node" id="final-node">
+        <i class="port in"></i><div class="node-head"><span class="step">05</span><div><h3>최종 수정 이미지 결과</h3><p>03 결과를 프롬프트와 레퍼런스로 재편집</p></div><span class="status">FINAL</span></div>
+        <div class="result-stage"><img id="final-image" alt="최종 수정 이미지 결과"><button id="final-full-view" class="full-view" type="button" hidden>FULL ↗</button><div id="final-empty"><span>✦</span><b>04번에서 수정 내용을 입력하면<br>최종 결과가 표시됩니다</b></div><div id="final-loading" hidden><span></span><b>이미지를 수정하고 있습니다…</b><small>03 결과를 기준으로 재편집하는 중</small></div></div>
+        <div class="final-actions" hidden><button id="final-download">1920×1080 OUTPUT 저장</button><button id="final-retry">다시 생성</button></div>
+        <i class="port out"></i>
+      </article>
+
+      <article class="node history-node" id="history-node">
+        <div class="node-head"><span class="step">H</span><div><h3>최근 생성 히스토리</h3><p>03 생성 결과와 05 수정 결과 통합</p></div><span id="history-count" class="status">0 / 20</span></div>
+        <div id="history-track" class="history-track"><p id="history-empty">아직 생성된 결과가 없습니다.</p></div>
+        <i class="port in top"></i><i class="port in bottom"></i>
+      </article>
+    </section>
+  </main>
+
+  <div class="view-controls"><span id="zoom-level">100%</span><button id="reset-zoom" type="button" title="화면 배율 100%로 복원">줌 초기화</button><button id="reset-nodes" type="button" title="노드 위치 초기화">노드 위치 초기화</button></div>
+
+  <div id="toast" role="status"></div>
+  <dialog id="preview-dialog" class="preview-dialog"><button id="close-preview" class="preview-close" type="button" aria-label="확대 이미지 닫기">×</button><img id="preview-image" alt="의상 교체 결과 전체 화면"><div class="preview-actions"><button id="preview-download" type="button">1920×1080 OUTPUT 저장</button></div></dialog>
+  <dialog id="anchor-dialog" class="anchor-dialog">
+    <div class="anchor-dialog-head"><div><h3>옷걸이 고리 위치 설정</h3><p>고리가 봉에 닿는 지점을 왼쪽부터 클릭하세요. 점은 드래그해서 옮길 수 있습니다.</p></div><button id="close-anchor-dialog" type="button" aria-label="좌표 설정 닫기">×</button></div>
+    <div class="anchor-canvas-wrap"><canvas id="anchor-canvas"></canvas></div>
+    <div class="anchor-dialog-actions"><span id="anchor-editor-count">0개 위치</span><button id="remove-last-anchor" type="button">마지막 점 삭제</button><button id="reset-anchors" type="button">기본값 복원</button><button id="save-anchors" class="primary" type="button">위치 저장</button></div>
+  </dialog>
+  <dialog id="api-key-dialog" class="api-key-dialog">
+    <form id="api-key-form" method="dialog">
+      <button id="close-api-key-dialog" class="dialog-close" type="button" aria-label="API 키 입력 닫기">×</button>
+      <span class="eyebrow">OPENAI CONNECTION</span>
+      <h3>OpenAI API 키 입력</h3>
+      <p>본인의 OpenAI API 키를 입력하세요. 키는 파일이나 브라우저에 저장되지 않고, 현재 앱이 실행되는 동안 로컬 서버 메모리에만 보관됩니다.</p>
+      <label for="api-key-input">API KEY</label>
+      <input id="api-key-input" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." required>
+      <small>앱을 완전히 종료하면 키가 삭제되어 다음 실행 때 다시 입력해야 합니다.</small>
+      <button id="save-api-key" class="api-key-submit" type="submit">키 적용하고 시작하기</button>
+    </form>
+  </dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

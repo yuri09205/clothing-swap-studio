@@ -1,0 +1,23 @@
+{
+  "name": "clothing-swap-studio",
+  "productName": "Clothing Swap Studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "제품 이미지 기반 정밀 의상 교체 데스크톱 앱",
+  "author": "SSG Design",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "electron:start": "electron .",
+    "test": "node --test",
+    "package:windows": "electron-forge package --platform win32 --arch x64",
+    "make:windows": "electron-forge make --platform win32 --arch x64",
+    "release:windows": "npm run test && npm run make:windows && node scripts/collect-release.mjs"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^8.0.1",
+    "@electron-forge/maker-squirrel": "^8.0.1",
+    "electron": "^45.2.2"
+  }
+}
