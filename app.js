@@ -112,7 +112,44 @@ function toast(message) {
   toast.timer = setTimeout(() => node.classList.remove('show'), 2800);
 }
 
-function readImage(file) {
+const PRODUCT_MAX_DIMENSION = 2048;
+const BACKGROUND_MAX_DIMENSION = 2560;
+
+function dataUrlBytes(dataUrl) {
+  const payload = String(dataUrl || '').split(',')[1] || '';
+  return Math.ceil(payload.length * 3 / 4);
+}
+
+function optimizeLoadedImage(image, dataUrl, maxDimension) {
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const largestSide = Math.max(width, height);
+  if (!maxDimension || largestSide <= maxDimension) {
+    return { dataUrl, image, optimized: false, originalBytes: dataUrlBytes(dataUrl), width, height };
+  }
+
+  const scale = maxDimension / largestSide;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  const context = canvas.getContext('2d');
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const optimizedDataUrl = canvas.toDataURL('image/png');
+  return {
+    dataUrl: optimizedDataUrl,
+    image,
+    optimized: true,
+    originalBytes: dataUrlBytes(dataUrl),
+    optimizedBytes: dataUrlBytes(optimizedDataUrl),
+    width: canvas.width,
+    height: canvas.height
+  };
+}
+
+function readImage(file, maxDimension = PRODUCT_MAX_DIMENSION) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith('image/')) return reject(new Error('이미지 파일을 선택해 주세요.'));
     if (file.size > 15 * 1024 * 1024) return reject(new Error('15MB 이하 이미지를 선택해 주세요.'));
@@ -120,7 +157,14 @@ function readImage(file) {
     reader.onerror = () => reject(new Error('파일을 읽지 못했습니다.'));
     reader.onload = () => {
       const image = new Image();
-      image.onload = () => resolve({ dataUrl: reader.result, image, name: file.name });
+      image.onload = () => {
+        const optimized = optimizeLoadedImage(image, reader.result, maxDimension);
+        if (!optimized.optimized) return resolve({ ...optimized, name: file.name });
+        const previewImage = new Image();
+        previewImage.onload = () => resolve({ ...optimized, image: previewImage, name: file.name });
+        previewImage.onerror = () => reject(new Error('최적화된 이미지를 불러오지 못했습니다.'));
+        previewImage.src = optimized.dataUrl;
+      };
       image.onerror = () => reject(new Error('이미지를 불러오지 못했습니다.'));
       image.src = reader.result;
     };
@@ -130,12 +174,13 @@ function readImage(file) {
 
 async function setUpload(kind, input) {
   try {
-    const value = await readImage(input.files[0]);
+    const value = await readImage(input.files[0], BACKGROUND_MAX_DIMENSION);
     if (kind === 'background') {
       setBackground(value, 'custom');
       $('#custom-background img').src = value.dataUrl;
       $('#custom-background').hidden = false;
       $('#background-node .replace').hidden = false;
+      if (value.optimized) toast('큰 배경 이미지를 자동 최적화해 첨부했습니다.');
     }
   } catch (error) { toast(error.message); }
 }
@@ -310,7 +355,7 @@ async function setProducts(input) {
   try {
     const files = [...input.files].slice(0, 6);
     if (!files.length) return;
-    products = await Promise.all(files.map(readImage));
+    products = await Promise.all(files.map((file) => readImage(file, PRODUCT_MAX_DIMENSION)));
     const node = $('#product-node');
     node.classList.add('complete');
     $('#product-preview').innerHTML = products.map((item, index) => `<figure><img src="${item.dataUrl}" alt="제품 ${index + 1}"><b>${index + 1}</b></figure>`).join('');
@@ -319,7 +364,10 @@ async function setProducts(input) {
     $('#product-status').textContent = `${products.length}장 완료`;
     updateReady();
     drawLines();
-    toast(`제품 이미지 ${products.length}장을 첨부했습니다.`);
+    const optimizedCount = products.filter((item) => item.optimized).length;
+    toast(optimizedCount
+      ? `제품 ${products.length}장 중 큰 이미지 ${optimizedCount}장을 자동 최적화했습니다.`
+      : `제품 이미지 ${products.length}장을 첨부했습니다.`);
     if (input.files.length > 6) toast('제품 이미지는 최대 6개까지 적용됩니다.');
   } catch (error) { toast(error.message); }
 }
@@ -328,13 +376,16 @@ async function setRefineReferences(input) {
   try {
     const files = [...input.files].slice(0, 6);
     if (!files.length) return;
-    refineReferences = await Promise.all(files.map(readImage));
+    refineReferences = await Promise.all(files.map((file) => readImage(file, PRODUCT_MAX_DIMENSION)));
     $('#reference-preview').innerHTML = refineReferences.map((item, index) => `<figure><img src="${item.dataUrl}" alt="수정 레퍼런스 ${index + 1}"><b>${index + 1}</b></figure>`).join('');
     $('#reference-copy').hidden = true;
     $('#clear-references').hidden = false;
     updateRefineReady();
     drawLines();
-    toast(`수정 레퍼런스 ${refineReferences.length}장을 첨부했습니다.`);
+    const optimizedCount = refineReferences.filter((item) => item.optimized).length;
+    toast(optimizedCount
+      ? `레퍼런스 ${refineReferences.length}장 중 큰 이미지 ${optimizedCount}장을 자동 최적화했습니다.`
+      : `수정 레퍼런스 ${refineReferences.length}장을 첨부했습니다.`);
     if (input.files.length > 6) toast('수정 레퍼런스는 최대 6장까지 적용됩니다.');
   } catch (error) { toast(error.message); }
 }

@@ -8,7 +8,9 @@ const backgroundDir = normalize(process.env.CLOTHING_SWAP_BACKGROUND_DIR || join
 const outputDir = normalize(process.env.CLOTHING_SWAP_OUTPUT_DIR || join(root, '..', '02_OUTPUT'));
 const port = Number(process.env.PORT || 4175);
 const openaiImageEndpoint = 'https://api.openai.com/v1/images/edits';
-const maxBytes = 32 * 1024 * 1024;
+// Client images are downscaled before upload. Keep enough headroom for six
+// transparent PNG product references plus a background and position guide.
+const maxBytes = 96 * 1024 * 1024;
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 let sessionOpenAIKey = '';
@@ -177,7 +179,7 @@ async function generate(request, response) {
     if (!image) return sendJson(response, 502, { error: { message: 'OpenAI 응답에서 결과 이미지를 찾지 못했습니다.' } });
     sendJson(response, 200, { dataUrl: `data:image/png;base64,${image}`, provider: 'openai' });
   } catch (error) {
-    if (error.message === 'TOO_LARGE') return sendJson(response, 413, { error: { message: '이미지 용량이 너무 큽니다.' } });
+    if (error.message === 'TOO_LARGE') return sendJson(response, 413, { error: { message: '첨부 이미지 전체 용량이 너무 큽니다. 큰 이미지를 다시 첨부하면 자동 최적화됩니다.' } });
     sendJson(response, 502, { error: { message: 'OpenAI 이미지 서버에 연결하지 못했습니다.' } });
   }
 }
@@ -217,7 +219,7 @@ async function refine(request, response) {
     if (!image) return sendJson(response, 502, { error: { message: 'OpenAI 응답에서 수정 이미지를 찾지 못했습니다.' } });
     sendJson(response, 200, { dataUrl: `data:image/png;base64,${image}`, provider: 'openai' });
   } catch (error) {
-    if (error.message === 'TOO_LARGE') return sendJson(response, 413, { error: { message: '이미지 용량이 너무 큽니다.' } });
+    if (error.message === 'TOO_LARGE') return sendJson(response, 413, { error: { message: '첨부 이미지 전체 용량이 너무 큽니다. 큰 이미지를 다시 첨부하면 자동 최적화됩니다.' } });
     sendJson(response, 502, { error: { message: 'OpenAI 이미지 수정 서버에 연결하지 못했습니다.' } });
   }
 }
